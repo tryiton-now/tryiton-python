@@ -93,16 +93,15 @@ class TryItOn:
         mode: Optional[str] = None,
         num_samples: Optional[int] = None,
         output_format: Optional[str] = None,
-        seed: Optional[int] = None,
-        segmentation_free: Optional[bool] = None,
-        garment_photo_type: Optional[str] = None,
         moderation_level: Optional[str] = None,
     ) -> str:
         """Put a garment or accessory on a person. Returns the job id.
 
         `category` is one of auto | clothing | eyewear | footwear | headwear |
         jewelry | accessories | others. `clothing`, `jewelry`, and `accessories`
-        require a `subcategory`.
+        require a `subcategory`. `num_samples` is 1-4 (charged per image),
+        `output_format` is "png" or "jpeg", and `moderation_level` is one of
+        "conservative", "permissive", or "none".
         """
         body = {
             "model_image": model_image,
@@ -112,9 +111,6 @@ class TryItOn:
             "mode": mode,
             "num_samples": num_samples,
             "output_format": output_format,
-            "seed": seed,
-            "segmentation_free": segmentation_free,
-            "garment_photo_type": garment_photo_type,
             "moderation_level": moderation_level,
         }
         return self._request("POST", "/tryon/clothes", body)["jobId"]
@@ -125,9 +121,21 @@ class TryItOn:
         face_image: str,
         haircut: str,
         hair_color: Optional[str] = None,
+        num_samples: Optional[int] = None,
+        output_format: Optional[str] = None,
     ) -> str:
-        """Restyle a person's hair. Returns the job id."""
-        body = {"face_image": face_image, "haircut": haircut, "hair_color": hair_color}
+        """Restyle a person's hair. Returns the job id.
+
+        `num_samples` is 1-4 (charged per image) and `output_format` is "png"
+        or "jpeg".
+        """
+        body = {
+            "face_image": face_image,
+            "haircut": haircut,
+            "hair_color": hair_color,
+            "num_samples": num_samples,
+            "output_format": output_format,
+        }
         return self._request("POST", "/tryon/hairstyle", body)["jobId"]
 
     def try_on_tattoo(
@@ -136,9 +144,21 @@ class TryItOn:
         body_image: str,
         design_image: str,
         placement: Optional[str] = None,
+        num_samples: Optional[int] = None,
+        output_format: Optional[str] = None,
     ) -> str:
-        """Ink a design onto skin. Returns the job id."""
-        body = {"body_image": body_image, "design_image": design_image, "placement": placement}
+        """Ink a design onto skin. Returns the job id.
+
+        `num_samples` is 1-4 (charged per image) and `output_format` is "png"
+        or "jpeg".
+        """
+        body = {
+            "body_image": body_image,
+            "design_image": design_image,
+            "placement": placement,
+            "num_samples": num_samples,
+            "output_format": output_format,
+        }
         return self._request("POST", "/tryon/tattoo", body)["jobId"]
 
     # ── Status & credits ──────────────────────────────────────────────────
