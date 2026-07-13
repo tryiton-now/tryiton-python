@@ -144,10 +144,18 @@ class TryItOn:
         body_image: str,
         design_image: str,
         placement: Optional[str] = None,
+        region: Optional[Dict[str, float]] = None,
         num_samples: Optional[int] = None,
         output_format: Optional[str] = None,
     ) -> str:
         """Ink a design onto skin. Returns the job id.
+
+        Position the tattoo in either of two ways, and they compose:
+        `placement` is free text ("on the right forearm, small"), while `region`
+        pins the exact spot as a rectangle on the body image --
+        ``{"x": .., "y": .., "w": .., "h": ..}``, normalized 0-1 from the
+        top-left corner, each side at least 0.06. With a region, `placement`
+        only describes size/style.
 
         `num_samples` is 1-4 (charged per image) and `output_format` is "png"
         or "jpeg".
@@ -156,6 +164,7 @@ class TryItOn:
             "body_image": body_image,
             "design_image": design_image,
             "placement": placement,
+            "region": region,
             "num_samples": num_samples,
             "output_format": output_format,
         }
