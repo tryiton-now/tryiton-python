@@ -57,7 +57,7 @@ class TryItOn:
 
     Example:
         client = TryItOn(api_key="...")
-        job_id = client.try_on_clothes(
+        job_id = client.try_on_fashion(
             model_image="https://example.com/model.jpg",
             garment_image="https://example.com/tshirt.jpg",
             category="clothing",
@@ -83,7 +83,7 @@ class TryItOn:
 
     # ── Try-on submissions ────────────────────────────────────────────────
 
-    def try_on_clothes(
+    def try_on_fashion(
         self,
         *,
         model_image: str,
@@ -113,7 +113,7 @@ class TryItOn:
             "output_format": output_format,
             "moderation_level": moderation_level,
         }
-        return self._request("POST", "/tryon/clothes", body)["jobId"]
+        return self._request("POST", "/tryon/fashion", body)["jobId"]
 
     def try_on_hairstyle(
         self,

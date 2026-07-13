@@ -27,7 +27,7 @@ from tryiton import TryItOn
 client = TryItOn(api_key=os.environ["TRYITON_API_KEY"])
 
 # Submit a clothing try-on
-job_id = client.try_on_clothes(
+job_id = client.try_on_fashion(
     model_image="https://example.com/model.jpg",
     garment_image="https://example.com/tshirt.jpg",
     category="clothing",
@@ -43,7 +43,7 @@ Image inputs accept a public URL or a base64 data URL (`data:image/png;base64,..
 
 ## Core parameters
 
-`try_on_clothes` covers clothing and accessory try-on. The most important parameters:
+`try_on_fashion` covers clothing and accessory try-on. The most important parameters:
 
 | Parameter | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
@@ -78,7 +78,7 @@ All failures raise `TryItOnError`, which carries the HTTP status code and the AP
 from tryiton import TryItOn, TryItOnError
 
 try:
-    client.try_on_clothes(...)
+    client.try_on_fashion(...)
 except TryItOnError as err:
     print(err.status, err.error_name, str(err))  # e.g. 429, "OutOfCredits"
 ```
