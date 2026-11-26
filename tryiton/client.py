@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import warnings
 from typing import Any, Dict, List, Optional, cast
 from urllib.parse import quote
 
@@ -87,9 +88,18 @@ class TryItOn:
         `category` is one of auto | clothing | eyewear | footwear | headwear |
         jewelry | accessories | others. `clothing`, `jewelry`, and `accessories`
         require a `subcategory`. `num_samples` is 1-4 (charged per image),
-        `output_format` is "png" or "jpeg", and `moderation_level` is one of
-        "conservative", "permissive", or "none".
+        and `output_format` is "png" or "jpeg".
+
+        Deprecated: `mode` is ignored by the API, and `moderation_level` is
+        validated but has no effect. Both emit a DeprecationWarning and will be
+        removed in 3.0.
         """
+        if mode is not None or moderation_level is not None:
+            warnings.warn(
+                "try_on_fashion: `mode` and `moderation_level` have no effect and will be removed in 3.0",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         body = {
             "model_image": model_image,
             "garment_image": garment_image,

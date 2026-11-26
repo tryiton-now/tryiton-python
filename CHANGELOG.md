@@ -4,7 +4,13 @@ All notable changes to the `tryiton` Python SDK are documented here. The format 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.1.0] - Unreleased
+## [Unreleased]
+
+### Deprecated
+
+- `try_on_fashion(mode=..., moderation_level=...)`: the API ignores `mode` and validates `moderation_level` without applying it. Passing either now emits a `DeprecationWarning`; both are removed in 3.0.
+
+## [2.1.0] - 2026-11-26
 
 ### Added
 
@@ -60,7 +66,8 @@ All notable changes to the `tryiton` Python SDK are documented here. The format 
 - Initial release: clothing/accessory, hairstyle and tattoo try-on, `get_status`, `get_credits` and the
   `wait_for_result` polling helper.
 
-[2.1.0]: https://github.com/tryiton-now/tryiton-python/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/tryiton-now/tryiton-python/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/tryiton-now/tryiton-python/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/tryiton-now/tryiton-python/compare/v1.1.0...v2.0.0
 [1.1.0]: https://github.com/tryiton-now/tryiton-python/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/tryiton-now/tryiton-python/compare/v0.1.0...v1.0.0
