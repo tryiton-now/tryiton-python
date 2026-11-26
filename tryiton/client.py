@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
+from urllib.parse import quote
 
 import requests
+
+from .types import Credits, LiveConfig, LiveGarment, LiveSession, LiveSessionStart, Status
 
 DEFAULT_BASE_URL = "https://tryiton.now/api/v1"
 
@@ -33,23 +35,6 @@ class TryItOnError(Exception):
         super().__init__(message)
         self.status = status
         self.error_name = error_name
-
-
-@dataclass
-class Status:
-    """A job's status snapshot."""
-
-    status: str  # "processing" | "completed" | "failed"
-    output: List[str]
-    error: Optional[Dict[str, str]]
-
-
-@dataclass
-class Credits:
-    on_demand: int
-    subscription: int
-    purchased: int
-    reserved: int
 
 
 class TryItOn:
@@ -80,8 +65,10 @@ class TryItOn:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self._session = session or requests.Session()
+        # Imported here, not at module level: the package __init__ imports this module first.
+        from . import __version__
 
-    # ── Try-on submissions ────────────────────────────────────────────────
+        self._user_agent = f"tryiton-python/{__version__}"
 
     def try_on_fashion(
         self,
@@ -113,7 +100,7 @@ class TryItOn:
             "output_format": output_format,
             "moderation_level": moderation_level,
         }
-        return self._request("POST", "/tryon/fashion", body)["jobId"]
+        return cast(str, self._request("POST", "/tryon/fashion", body)["jobId"])
 
     def try_on_hairstyle(
         self,
@@ -136,7 +123,7 @@ class TryItOn:
             "num_samples": num_samples,
             "output_format": output_format,
         }
-        return self._request("POST", "/tryon/hairstyle", body)["jobId"]
+        return cast(str, self._request("POST", "/tryon/hairstyle", body)["jobId"])
 
     def try_on_tattoo(
         self,
@@ -150,12 +137,9 @@ class TryItOn:
     ) -> str:
         """Ink a design onto skin. Returns the job id.
 
-        Position the tattoo in either of two ways, and they compose:
-        `placement` is free text ("on the right forearm, small"), while `region`
-        pins the exact spot as a rectangle on the body image --
-        ``{"x": .., "y": .., "w": .., "h": ..}``, normalized 0-1 from the
-        top-left corner, each side at least 0.06. With a region, `placement`
-        only describes size/style.
+        `placement` is free text ("on the right forearm, small"). `region` pins the
+        exact spot: ``{"x", "y", "w", "h"}`` normalized 0-1 from the top-left,
+        each side >= 0.06; with it, `placement` only describes size/style.
 
         `num_samples` is 1-4 (charged per image) and `output_format` is "png"
         or "jpeg".
@@ -168,13 +152,11 @@ class TryItOn:
             "num_samples": num_samples,
             "output_format": output_format,
         }
-        return self._request("POST", "/tryon/tattoo", body)["jobId"]
-
-    # ── Status & credits ──────────────────────────────────────────────────
+        return cast(str, self._request("POST", "/tryon/tattoo", body)["jobId"])
 
     def get_status(self, job_id: str) -> Status:
-        """Fetch the current status of a job."""
-        data = self._request("GET", f"/status/{job_id}")
+        """Fetch the current status of a job. The id is URL-escaped."""
+        data = self._request("GET", f"/status/{quote(str(job_id), safe='')}")
         return Status(
             status=data.get("status", "processing"),
             output=data.get("output") or [],
@@ -190,6 +172,86 @@ class TryItOn:
             purchased=c.get("purchased", 0),
             reserved=c.get("reserved", 0),
         )
+
+    # Live (real-time webcam) try-on. Server side only: the end user's browser
+    # streams with the `tryiton-live` npm package, using the response of
+    # start_live_session (session-scoped credentials, never your API key).
+
+    def get_live_config(self) -> LiveConfig:
+        """Live try-on availability and pricing for your account.
+
+        Returns a dict with ``enabled``, ``secondsPerCredit``, ``maxSeconds``,
+        ``minCredits`` and ``maxConcurrentSessions``.
+        """
+        data = self._request("GET", "/live/config")
+        return cast(LiveConfig, {k: v for k, v in data.items() if k != "ok"})
+
+    def prepare_live_garment(
+        self,
+        garment_image: str,
+        *,
+        category: Optional[str] = None,
+        subcategory: Optional[str] = None,
+    ) -> LiveGarment:
+        """Prepare a garment for live try-on. Returns the garment dict.
+
+        Do it once per product ahead of time (e.g. at catalog sync): it's cached
+        per image and category, so starting a session or switching garments
+        later is instant. `garment_image` is a URL or base64 data URL. Passing
+        `category` (and `subcategory`, e.g. "tops") is recommended; omit it to
+        let it be detected.
+
+        The dict has ``id`` (pass it to start_live_session), ``category``,
+        ``subcategory``, ``description`` and ``createdAt``.
+        """
+        body = {
+            "garment_image": garment_image,
+            "category": category,
+            "subcategory": subcategory,
+        }
+        return cast(LiveGarment, self._request("POST", "/live/garments", body)["garment"])
+
+    def start_live_session(
+        self,
+        *,
+        garment_id: Optional[str] = None,
+        max_seconds: Optional[int] = None,
+        end_user_id: Optional[str] = None,
+        allowed_origin: Optional[str] = None,
+    ) -> LiveSessionStart:
+        """Start a live session for one end user. Holds the first credit.
+
+        Returns the full response body (``session``, ``clientSecret``,
+        ``connection``, ``secondsPerCredit``, ``maxSeconds``, ``secondsLeft``,
+        ``garment``). Send it to the browser unchanged; it streams with
+        ``connectLiveTryOn`` from the `tryiton-live` npm package.
+
+        `garment_id` is a prepared garment to start with. `max_seconds` caps the
+        session (10 to the account's maxSeconds). `end_user_id` is your id for
+        the end user: one stream per end user, a restart ends the previous one.
+        `allowed_origin` locks the media token to your site, e.g.
+        "https://shop.example.com".
+        """
+        body = {
+            "garment_id": garment_id,
+            "max_seconds": max_seconds,
+            "end_user_id": end_user_id,
+            "allowed_origin": allowed_origin,
+        }
+        return cast(LiveSessionStart, self._request("POST", "/live/sessions", body))
+
+    def get_live_session(self, session_id: str) -> LiveSession:
+        """Status and usage of a live session. Returns the session dict."""
+        data = self._request("GET", f"/live/sessions/{quote(session_id, safe='')}")
+        return cast(LiveSession, data["session"])
+
+    def stop_live_session(self, session_id: str) -> LiveSession:
+        """End a live session from your server (e.g. the user left). Idempotent.
+
+        Returns the ended session dict.
+        """
+        data = self._request("POST", f"/live/sessions/{quote(session_id, safe='')}/stop", {})
+        return cast(LiveSession, data["session"])
 
     def wait_for_result(
         self,
@@ -208,11 +270,7 @@ class TryItOn:
             if status.status == "completed":
                 return status.output
             if status.status == "failed":
-                err = status.error or {}
-                raise TryItOnError(
-                    err.get("message", "Try-on failed."),
-                    error_name=err.get("name", "ProcessingError"),
-                )
+                raise _job_failure(status.error)
             if time.monotonic() > deadline:
                 raise TryItOnError(
                     f"Timed out waiting for job {job_id} after {timeout}s.",
@@ -220,11 +278,9 @@ class TryItOn:
                 )
             time.sleep(poll_interval)
 
-    # ── Internals ─────────────────────────────────────────────────────────
-
     def _request(self, method: str, path: str, body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         url = f"{self.base_url}{path}"
-        headers = {"Authorization": f"Bearer {self.api_key}"}
+        headers = {"Authorization": f"Bearer {self.api_key}", "User-Agent": self._user_agent}
         payload = None
         if body is not None:
             payload = {k: v for k, v in body.items() if v is not None}
@@ -243,10 +299,29 @@ class TryItOn:
             data = {}
 
         if not resp.ok:
+            # API envelope: {"ok": false, "error": {"name", "message"}}. Older shapes put strings at the top level.
+            if not isinstance(data, dict):
+                data = {}
+            error = data.get("error")
+            api_error: Dict[str, Any] = error if isinstance(error, dict) else {}
+            top_message = data.get("message") if isinstance(data.get("message"), str) else None
+            top_name = error if isinstance(error, str) else None
             raise TryItOnError(
-                data.get("message", f"HTTP {resp.status_code}"),
+                api_error.get("message") or top_message or f"HTTP {resp.status_code}",
                 status=resp.status_code,
-                error_name=data.get("error"),
+                error_name=api_error.get("name") or top_name,
             )
 
         return data
+
+
+def _job_failure(error: Any) -> TryItOnError:
+    """The error for a failed job. `GET /status` sends the reason as a plain string; a
+    `{"name", "message"}` dict is still accepted from older API versions."""
+    if isinstance(error, dict):
+        return TryItOnError(
+            error.get("message") or "Try-on failed.",
+            error_name=error.get("name") or "ProcessingError",
+        )
+    message = error if isinstance(error, str) and error else "Try-on failed."
+    return TryItOnError(message, error_name="ProcessingError")
