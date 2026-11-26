@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tryiton"
-version = "2.0.0"
+version = "2.1.0"
 description = "Official Python SDK for the TryItOn virtual try-on API."
 readme = "README.md"
 requires-python = ">=3.8"
@@ -12,6 +12,9 @@ license = { text = "MIT" }
 authors = [{ name = "TryItOn" }]
 keywords = ["tryiton", "virtual-try-on", "tryon", "fashion", "ai", "sdk"]
 dependencies = ["requests>=2.25"]
+
+[project.optional-dependencies]
+dev = ["pytest", "mypy", "types-requests"]
 
 [project.urls]
 Homepage = "https://tryiton.now"
@@ -21,3 +24,12 @@ Issues = "https://github.com/tryiton-now/tryiton-python/issues"
 
 [tool.setuptools]
 packages = ["tryiton"]
+
+[tool.setuptools.package-data]
+tryiton = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.mypy]
+strict = true

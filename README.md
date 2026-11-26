@@ -70,6 +70,30 @@ status = client.get_status(job_id)   # Status(status, output, error)
 credits = client.get_credits()        # Credits(on_demand, subscription, purchased, reserved)
 ```
 
+## Live try-on (real-time webcam)
+
+Your server prepares garments and starts sessions with the API key. The shopper's browser streams with the
+[`tryiton-live`](https://www.npmjs.com/package/tryiton-live) npm package, using only the session-scoped response.
+
+```python
+# Once per product, e.g. at catalog sync (cached per image + category):
+garment = client.prepare_live_garment(product_image_url, category="clothing", subcategory="tops")
+
+# When a shopper opens live try-on. Return `start` to the browser as-is (e.g. as JSON):
+start = client.start_live_session(
+    garment_id=garment["id"],
+    end_user_id=shopper_id,                     # one stream per end user
+    allowed_origin="https://shop.example.com",  # locks the media token to your site
+)
+
+client.get_live_session(start["session"]["id"])   # {"status", "seconds", "creditsCharged", ...}
+client.stop_live_session(start["session"]["id"])  # end it from your server
+client.get_live_config()                          # {"enabled", "secondsPerCredit", "maxSeconds", ...}
+```
+
+Billing is per `secondsPerCredit` seconds of streamed video, from the first try-on frame. Garment switches during a
+session are free.
+
 ## Error handling
 
 All failures raise `TryItOnError`, which carries the HTTP status code and the API error name.
@@ -83,10 +107,29 @@ except TryItOnError as err:
     print(err.status, err.error_name, str(err))  # e.g. 429, "OutOfCredits"
 ```
 
+## Typing
+
+The package ships `py.typed`. `get_status` and `get_credits` return the `Status` and `Credits` dataclasses. The live
+methods return plain dicts typed as `TypedDict`s (`LiveConfig`, `LiveGarment`, `LiveSession`, `LiveSessionStart`),
+all importable from `tryiton`.
+
 ## Notes
 
 - Output image URLs expire 72 hours after completion. Download any results you want to keep.
 - Failed jobs are never charged.
+
+## Development
+
+```bash
+python -m venv .venv && . .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
+pytest                 # unit tests + the shared contract cases
+python -m mypy tryiton # strict type check
+```
+
+`tests/fixtures/sdk-cases.json` holds the request/response cases every TryItOn SDK runs. It is generated: edit the
+source in the backend repo (`api-contract/sdk-cases.json`) and re-sync, never the copy here. Changes are listed in
+[CHANGELOG.md](CHANGELOG.md).
 
 ## Documentation
 
