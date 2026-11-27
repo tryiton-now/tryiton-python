@@ -42,12 +42,15 @@ class LiveConfig(TypedDict):
 
 
 class LiveGarment(TypedDict):
-    """A garment prepared for live try-on."""
+    """A garment (or outfit) prepared for live try-on."""
 
     id: str
-    category: str
+    category: str  # the item's category, or "outfit" for a prepare_live_outfit result
     subcategory: Optional[str]
     description: Optional[str]
+    prompt: str  # the prompt the stream uses
+    enhancePrompt: bool  # whether the stream rewrites `prompt`
+    items: Optional[List[str]]  # an outfit's garment ids, top to bottom; None for a single garment
     createdAt: str  # ISO 8601
 
 
