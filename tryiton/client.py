@@ -202,24 +202,63 @@ class TryItOn:
         *,
         category: Optional[str] = None,
         subcategory: Optional[str] = None,
+        detail_images: Optional[List[str]] = None,
+        description: Optional[str] = None,
+        instructions: Optional[str] = None,
+        enhance_prompt: Optional[bool] = None,
     ) -> LiveGarment:
         """Prepare a garment for live try-on. Returns the garment dict.
 
         Do it once per product ahead of time (e.g. at catalog sync): it's cached
-        per image and category, so starting a session or switching garments
-        later is instant. `garment_image` is a URL or base64 data URL. Passing
-        `category` (and `subcategory`, e.g. "tops") is recommended; omit it to
-        let it be detected.
+        per image, category and overrides, so starting a session or switching
+        garments later is instant. `garment_image` is a URL or base64 data URL.
+        Passing `category` (and `subcategory`, e.g. "tops") is recommended; omit
+        it to let it be detected.
+
+        Optional overrides: `detail_images` is up to 3 extra views (URLs or data
+        URLs) that only sharpen the description. `description` (max 200 chars)
+        is your own item description, used inside the generated prompt.
+        `instructions` (max 1000 chars) is your own prompt, used verbatim
+        instead of the generated one. `enhance_prompt=False` stops the stream
+        from rewriting the prompt (the API defaults to True).
 
         The dict has ``id`` (pass it to start_live_session), ``category``,
-        ``subcategory``, ``description`` and ``createdAt``.
+        ``subcategory``, ``description``, ``prompt``, ``enhancePrompt``,
+        ``items`` (None for a single garment) and ``createdAt``.
         """
         body = {
             "garment_image": garment_image,
             "category": category,
             "subcategory": subcategory,
+            "detail_images": detail_images,
+            "description": description,
+            "instructions": instructions,
+            "enhance_prompt": enhance_prompt,
         }
         return cast(LiveGarment, self._request("POST", "/live/garments", body)["garment"])
+
+    def prepare_live_outfit(
+        self,
+        garment_ids: List[str],
+        *,
+        instructions: Optional[str] = None,
+        enhance_prompt: Optional[bool] = None,
+    ) -> LiveGarment:
+        """Combine 2-3 prepared garments into one outfit worn together.
+
+        Returns the outfit as a garment dict with ``category`` "outfit" and
+        ``items`` = the garment ids top to bottom. Its ``id`` works wherever a
+        garment id does (start_live_session, the browser's switchGarment).
+        It's cached per set of garments and overrides, so swapping one item is
+        preparing the new set and switching to it. `instructions` and
+        `enhance_prompt` work as in prepare_live_garment.
+        """
+        body = {
+            "garment_ids": list(garment_ids),
+            "instructions": instructions,
+            "enhance_prompt": enhance_prompt,
+        }
+        return cast(LiveGarment, self._request("POST", "/live/outfits", body)["outfit"])
 
     def start_live_session(
         self,

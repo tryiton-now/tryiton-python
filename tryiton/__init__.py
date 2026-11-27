@@ -35,4 +35,4 @@ __all__ = [
     "LiveSessionStart",
 ]
 # Single source of the SDK version (sent in the User-Agent); keep it equal to pyproject.toml.
-__version__ = "2.1.0"
+__version__ = "2.2.0"

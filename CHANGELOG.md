@@ -6,6 +6,20 @@ All notable changes to the `tryiton` Python SDK are documented here. The format 
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-11-27
+
+### Added
+
+- `prepare_live_garment()` takes four optional keyword overrides: `detail_images` (up to 3 extra views that only
+  sharpen the description), `description` (your own item description, max 200 chars, used inside the generated
+  prompt), `instructions` (your own prompt, max 1000 chars, used verbatim) and `enhance_prompt` (`False` turns off the
+  stream's prompt rewriting; the API defaults to `True`).
+- `prepare_live_outfit(garment_ids, *, instructions=None, enhance_prompt=None)` combines 2-3 prepared garments into
+  one outfit (`POST /live/outfits`). Its `id` works wherever a garment id does: `start_live_session(garment_id=...)`
+  and the browser's `switchGarment`.
+- `LiveGarment` gains `prompt`, `enhancePrompt` and `items` (an outfit's garment ids top to bottom, else `None`).
+  `category` can be `"outfit"`.
+
 ### Deprecated
 
 - `try_on_fashion(mode=..., moderation_level=...)`: the API ignores `mode` and validates `moderation_level` without applying it. Passing either now emits a `DeprecationWarning`; both are removed in 3.0.
